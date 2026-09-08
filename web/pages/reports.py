@@ -8,6 +8,16 @@ from data.database.db_manager import DBManager
 API_URL = "http://localhost:8000"
 
 
+def _number_or_zero(value):
+    """Normalize nullable database values before comparisons and formatting."""
+    if value is None:
+        return 0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def render_reports():
     st.title("Rapor Merkezi")
     st.caption("Hisse raporlari, degerleme ciktilari ve veri kalitesini tek yerden yonetin.")
@@ -248,15 +258,16 @@ def _data_status_report():
     # Tablo
     rows = []
     for code, s in data.items():
-        price = s.get("last_price", 0) or 0
-        mcap = (s.get("market_cap", 0) or 0) / 1_000_000
-        ndebt = (s.get("net_debt") / 1_000_000) if s.get("net_debt") is not None else None
-        frate = s.get("float_rate", 0) or 0
-        fshares = s.get("floating_shares", 0) or 0
-        volume = s.get("volume", 0) or 0
-        total_shares = s.get("total_shares", 0) or 0
-        change_pct = s.get("change_pct", 0) or 0
-        calc_val = s.get("calculated_value", 0) or 0
+        price = _number_or_zero(s.get("last_price"))
+        mcap = _number_or_zero(s.get("market_cap")) / 1_000_000
+        raw_ndebt = s.get("net_debt")
+        ndebt = _number_or_zero(raw_ndebt) / 1_000_000 if raw_ndebt is not None else None
+        frate = _number_or_zero(s.get("float_rate"))
+        fshares = _number_or_zero(s.get("floating_shares"))
+        volume = _number_or_zero(s.get("volume"))
+        total_shares = _number_or_zero(s.get("total_shares"))
+        change_pct = _number_or_zero(s.get("change_pct"))
+        calc_val = _number_or_zero(s.get("calculated_value"))
         signal = s.get("signal", "")
         pe = s.get("pe")
         pb = s.get("pb")
