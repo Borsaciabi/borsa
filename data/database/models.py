@@ -57,6 +57,11 @@ def init_db():
             calculated_value REAL,
             ratio REAL,
             signal TEXT,
+            financial_period TEXT,
+            total_equity REAL,
+            paid_in_capital REAL,
+            net_income REAL,
+            financial_periods TEXT,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (stock_id) REFERENCES stock_master(id) ON DELETE CASCADE,
             UNIQUE(stock_id, source)
@@ -148,7 +153,19 @@ def init_db():
             UNIQUE(user_id, stock_code)
         );
     """)
-
+    # Keep existing local databases compatible with newly added financial fields.
+    existing_columns = {
+        row[1] for row in cursor.execute("PRAGMA table_info(stock_market_data)").fetchall()
+    }
+    for column, definition in {
+        "financial_period": "TEXT",
+        "total_equity": "REAL",
+        "paid_in_capital": "REAL",
+        "net_income": "REAL",
+        "financial_periods": "TEXT",
+    }.items():
+        if column not in existing_columns:
+            cursor.execute(f"ALTER TABLE stock_market_data ADD COLUMN {column} {definition}")
     conn.commit()
     conn.close()
 

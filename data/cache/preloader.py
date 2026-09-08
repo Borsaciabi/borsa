@@ -132,7 +132,10 @@ class DataPreloader:
                     if values.get("net_debt") is not None:
                         item["net_debt"] = values["net_debt"]
                         item["net_debt_mn"] = values.get("net_debt_mn", values["net_debt"] / 1e6)
-                    for key in ("pe", "pb", "eps", "revenue", "net_income", "total_equity"):
+                    for key in (
+                        "pe", "pb", "eps", "revenue", "net_income", "total_equity",
+                        "paid_in_capital", "financial_period", "financial_periods",
+                    ):
                         if values.get(key) is not None:
                             item[key] = values[key]
             except Exception as e:
@@ -273,6 +276,11 @@ class DataPreloader:
                 calculated_value=item.get("calculated_value"),
                 ratio=item.get("ratio"),
                 signal=item.get("signal"),
+                financial_period=item.get("financial_period"),
+                total_equity=item.get("total_equity"),
+                paid_in_capital=item.get("paid_in_capital"),
+                net_income=item.get("net_income"),
+                financial_periods=item.get("financial_periods"),
             )
 
         # Cache'le
@@ -288,6 +296,55 @@ class DataPreloader:
                 f.write(datetime.now().isoformat())
         except Exception as e:
             print(f"Cache kayit hatasi: {e}")
+
+    def update_financials(self, symbols=None, start_year=2026, end_year=2026):
+        """Manually refresh financial statements without refreshing market prices."""
+        if not self._all_data:
+            self.load_cache_with_backup()
+        target_symbols = symbols or list(self._all_data.keys())
+        if not target_symbols or not self.isyatirim_hisse.available:
+            return {}
+
+        financial_data = self.isyatirim_hisse.fetch_and_extract(
+            target_symbols, start_year=start_year, end_year=end_year
+        )
+        updated = {}
+        for code, values in financial_data.items():
+            item = self._all_data.setdefault(code, {"stock_code": code})
+            for key in (
+                "net_debt", "net_debt_mn", "total_equity", "paid_in_capital",
+                "net_income", "eps", "revenue", "short_term_debt",
+                "long_term_debt", "cash", "financial_period", "financial_periods",
+            ):
+                if values.get(key) is not None:
+                    item[key] = values[key]
+            self.db.upsert_stock(code, company_name=item.get("company_name", ""), sector=item.get("sector", ""))
+            self.db.upsert_stock_market_data(
+                code,
+                source="Mynet fiyat | KAP fiili dolasim | IsYatirim/isyatirimhisse finansal",
+                last_price=item.get("last_price"),
+                change_pct=item.get("change_pct"),
+                volume=item.get("volume"),
+                market_cap=item.get("market_cap"),
+                net_debt=item.get("net_debt"),
+                total_shares=item.get("total_shares"),
+                float_rate=item.get("float_rate"),
+                floating_shares=item.get("floating_shares"),
+                pe=item.get("pe"),
+                pb=item.get("pb"),
+                calculated_value=item.get("calculated_value"),
+                ratio=item.get("ratio"),
+                signal=item.get("signal"),
+                financial_period=item.get("financial_period"),
+                total_equity=item.get("total_equity"),
+                paid_in_capital=item.get("paid_in_capital"),
+                net_income=item.get("net_income"),
+                financial_periods=item.get("financial_periods"),
+            )
+            updated[code] = item
+        if updated:
+            self.save_cache()
+        return updated
 
     def backup_data(self):
         """Mevcut veriyi backup dosyasina kopyalar."""
@@ -381,6 +438,11 @@ class DataPreloader:
                         calculated_value=item.get("calculated_value"),
                         ratio=item.get("ratio"),
                         signal=item.get("signal"),
+                        financial_period=item.get("financial_period"),
+                        total_equity=item.get("total_equity"),
+                        paid_in_capital=item.get("paid_in_capital"),
+                        net_income=item.get("net_income"),
+                        financial_periods=item.get("financial_periods"),
                     )
 
             # Kaydet
@@ -440,6 +502,11 @@ class DataPreloader:
             calculated_value=item.get("calculated_value"),
             ratio=item.get("ratio"),
             signal=item.get("signal"),
+            financial_period=item.get("financial_period"),
+            total_equity=item.get("total_equity"),
+            paid_in_capital=item.get("paid_in_capital"),
+            net_income=item.get("net_income"),
+            financial_periods=item.get("financial_periods"),
         )
         self.save_cache()
         return item

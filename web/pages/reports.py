@@ -18,6 +18,11 @@ def _number_or_zero(value):
         return 0
 
 
+def _format_report_value(value):
+    value = _number_or_zero(value)
+    return f"{value:,.1f}" if value else "-"
+
+
 def render_reports():
     st.title("Rapor Merkezi")
     st.caption("Hisse raporlari, degerleme ciktilari ve veri kalitesini tek yerden yonetin.")
@@ -311,6 +316,10 @@ def _data_status_report():
             "Piyasa Degeri (mn)": f"{mcap:,.1f}" if has_m else "-",
             "Net Borc (mn)": f"{ndebt:,.1f}" if has_n else "-",
             "Toplam Hisse": f"{total_shares:,.0f}" if total_shares > 0 else "-",
+            "Ozkaynaklar": _format_report_value(s.get("total_equity")),
+            "Odenmis Sermaye": _format_report_value(s.get("paid_in_capital")),
+            "Net Kar": _format_report_value(s.get("net_income")),
+            "Bilanco Donemi": s.get("financial_period") or "-",
             "Fiili Dolasim (%)": f"{frate:.2f}" if has_f else "-",
             "Fiili Hisse": f"{fshares:,.0f}" if has_f else "-",
             "F/K (PE)": f"{pe:.2f}" if pe else "-",

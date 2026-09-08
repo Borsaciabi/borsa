@@ -55,6 +55,19 @@ def render_investing_dashboard():
                         st.session_state.stock_data = fresh_data
                         st.session_state.cache_time = loader.get_cache_time()
                 st.rerun()
+            if st.button("2026 Bilancolarini Guncelle", key="refresh_financials"):
+                with st.spinner("Is Yatirim'dan 2026 bilancolari cekiliyor..."):
+                    updated = loader.update_financials(
+                        symbols=["ISCTR"],
+                        start_year=2026,
+                        end_year=2026,
+                    )
+                    if updated:
+                        st.session_state.stock_data.update(updated)
+                        st.success(f"ISCTR bilancosu guncellendi ({len(updated)} kayit).")
+                    else:
+                        st.warning("2026 icin Is Yatirim'da yayinlanmis bilanço verisi bulunamadi.")
+                st.rerun()
         else:
             st.caption("Temel veri guncellemesi admin yetkisindedir")
     with col_price:

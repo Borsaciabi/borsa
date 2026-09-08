@@ -314,8 +314,9 @@ class DBManager:
             """
             INSERT INTO stock_market_data (
                 stock_id, source, last_price, change_pct, volume, market_cap, net_debt,
-                total_shares, float_rate, floating_shares, pe, pb, calculated_value, ratio, signal
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                total_shares, float_rate, floating_shares, pe, pb, calculated_value, ratio, signal,
+                financial_period, total_equity, paid_in_capital, net_income, financial_periods
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(stock_id, source) DO UPDATE SET
                 last_price = excluded.last_price,
                 change_pct = excluded.change_pct,
@@ -330,6 +331,11 @@ class DBManager:
                 calculated_value = excluded.calculated_value,
                 ratio = excluded.ratio,
                 signal = excluded.signal,
+                financial_period = excluded.financial_period,
+                total_equity = excluded.total_equity,
+                paid_in_capital = excluded.paid_in_capital,
+                net_income = excluded.net_income,
+                financial_periods = excluded.financial_periods,
                 recorded_at = CURRENT_TIMESTAMP
             """,
             (
@@ -348,6 +354,11 @@ class DBManager:
                 data.get("calculated_value"),
                 data.get("ratio"),
                 data.get("signal"),
+                data.get("financial_period"),
+                data.get("total_equity"),
+                data.get("paid_in_capital"),
+                data.get("net_income"),
+                data.get("financial_periods"),
             ),
         )
         conn.commit()
@@ -385,6 +396,11 @@ class DBManager:
                 smd.calculated_value,
                 smd.ratio,
                 smd.signal,
+                smd.financial_period,
+                smd.total_equity,
+                smd.paid_in_capital,
+                smd.net_income,
+                smd.financial_periods,
                 smd.recorded_at
             FROM stock_master sm
             LEFT JOIN stock_market_data smd ON smd.stock_id = sm.id

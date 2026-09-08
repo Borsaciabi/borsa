@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 from typing import Optional, Dict, List
 from datetime import date, timedelta
@@ -47,7 +48,7 @@ class IsYatirimHisseFetcher:
             return pd.DataFrame()
 
     def extract_fundamentals(self, fin_df: pd.DataFrame, symbols: List[str]) -> Dict[str, Dict]:
-        """Finansal tablodan temel verileri cikarir: net borc, F/K, PD/DD."""
+        """Extract the latest available period and retain all available periods."""
         results = {}
 
         for code in symbols:
@@ -57,48 +58,75 @@ class IsYatirimHisseFetcher:
 
             data = {}
 
-            # Son dolu donem sutununu al.
+            # The library returns columns such as 2026/3, 2026/6, etc.
             period_cols = [c for c in stock_fin.columns if str(c)[:4].isdigit()]
             if not period_cols:
                 continue
-            last_col = next(
-                (col for col in reversed(period_cols) if stock_fin[col].notna().any()),
-                period_cols[-1],
-            )
+            available_periods = [
+                col for col in period_cols if stock_fin[col].notna().any()
+            ]
+            if not available_periods:
+                continue
+            latest_period = available_periods[-1]
 
-            for _, row in stock_fin.iterrows():
-                item_code = row['FINANCIAL_ITEM_CODE']
-                val = row[last_col]
-                if pd.isna(val):
-                    continue
-                if isinstance(val, str):
-                    val = val.replace(".", "").replace(",", ".").strip()
+            def number(value):
+                if pd.isna(value):
+                    return None
+                if isinstance(value, str):
+                    value = value.replace(".", "").replace(",", ".").strip()
                 try:
-                    val = float(val)
+                    return float(value)
                 except (ValueError, TypeError):
-                    val = 0.0
+                    return None
 
-                # Kisa vadeli finansal borclar
-                if item_code == '2AA':
-                    data['short_term_debt'] = val
-                # Uzun vadeli finansal borclar
-                elif item_code == '2BA':
-                    data['long_term_debt'] = val
-                # Nakit ve nakit benzerleri
-                elif item_code == '1AA':
-                    data['cash'] = val
-                # Hisse basina kazanc (EPS)
-                elif item_code == '3ZD':
-                    data['eps'] = val
-                # Toplam kaynaklar
-                elif item_code == '2ODB':
-                    data['total_equity'] = val
-                # Satis gelirleri (yillik)
-                elif item_code == '3C':
-                    data['revenue'] = val
-                # Donem kar/zarar
-                elif item_code == '3L':
-                    data['net_income'] = val
+            def item_value(row):
+                return number(row[latest_period])
+
+            periods = {}
+            for period in available_periods:
+                period_values = {}
+                for _, row in stock_fin.iterrows():
+                    value = number(row[period])
+                    if value is not None:
+                        item_code = str(row["FINANCIAL_ITEM_CODE"])
+                        item_name = str(row.get("FINANCIAL_ITEM_NAME_TR", "")).lower()
+                        key = item_code
+                        if item_code == "2OA" or "ödenmiş sermaye" in item_name:
+                            key = "paid_in_capital"
+                        elif item_code == "2ODB" or "özkaynak" in item_name:
+                            key = "total_equity"
+                        elif item_code == "3L" or "net kâr" in item_name or "net kar" in item_name:
+                            key = "net_income"
+                        period_values[key] = value
+                periods[str(period)] = period_values
+
+            # Codes are kept for compatibility; descriptions cover variations
+            # between financial groups and future library releases.
+            for _, row in stock_fin.iterrows():
+                item_code = str(row["FINANCIAL_ITEM_CODE"])
+                item_name = str(row.get("FINANCIAL_ITEM_NAME_TR", "")).lower()
+                val = item_value(row)
+                if val is None:
+                    continue
+                if item_code == "2AA":
+                    data["short_term_debt"] = val
+                elif item_code == "2BA":
+                    data["long_term_debt"] = val
+                elif item_code == "1AA":
+                    data["cash"] = val
+                elif item_code == "3ZD":
+                    data["eps"] = val
+                elif item_code == "2OA" or "ödenmiş sermaye" in item_name:
+                    data["paid_in_capital"] = val
+                elif item_code == "2ODB" or "özkaynak" in item_name:
+                    data["total_equity"] = val
+                elif item_code == "3C":
+                    data["revenue"] = val
+                elif item_code == "3L" or "net kâr" in item_name or "net kar" in item_name:
+                    data["net_income"] = val
+
+            data["financial_period"] = str(latest_period)
+            data["financial_periods"] = json.dumps(periods, ensure_ascii=False)
 
             # Net borc hesapla: kisa vadeli + uzun vadeli - nakit
             st_debt = data.get('short_term_debt', 0) or 0

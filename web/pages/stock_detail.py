@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 from analysis.technical_analysis import TechnicalAnalyzer
 from data.cache.preloader import DataPreloader
@@ -151,6 +152,9 @@ def _render_financials(s):
         "PD/DD": f"{s.get('pb', 0):.2f}" if s.get("pb") else "N/A",
         "Gelir": _format_large_value(s.get("revenue")),
         "Net Kar": _format_large_value(s.get("net_income")),
+        "Ozkaynaklar": _format_large_value(s.get("total_equity")),
+        "Odenmis Sermaye": _format_large_value(s.get("paid_in_capital")),
+        "Bilanco Donemi": s.get("financial_period") or "N/A",
         "Hisse B. Kar": _format_number(s.get("eps")),
         "Temettu": _format_number(s.get("dividend_rate")),
         "Temettu Verimi": _format_percent(s.get("dividend_yield"), ratio=100),
@@ -163,6 +167,26 @@ def _render_financials(s):
         "Defter Degeri / Hisse": _format_number(s.get("book_value")),
     }
     st.dataframe([{"Metrik": key, "Deger": value} for key, value in rows.items()], hide_index=True, use_container_width=True)
+    if s.get("financial_periods"):
+        try:
+            periods = json.loads(s["financial_periods"])
+            if periods:
+                st.caption("Is Yatirim'dan cekilen mevcut bilanço donemleri")
+                st.dataframe(
+                    [
+                        {
+                            "Donem": period,
+                            "Ozkaynaklar": _format_large_value(values.get("total_equity")),
+                            "Odenmis Sermaye": _format_large_value(values.get("paid_in_capital")),
+                            "Net Kar": _format_large_value(values.get("net_income")),
+                        }
+                        for period, values in periods.items()
+                    ],
+                    hide_index=True,
+                    use_container_width=True,
+                )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
 
     st.subheader("Piyasa Verileri")
     market_rows = {
