@@ -147,74 +147,81 @@ def _data_status_report():
         st.info("Veritabaninda piyasa verisi bulunmuyor. Veri Durumunu Guncelle butonunu kullanin.")
         return
 
-    data = {row["symbol"]: row for row in db_rows}
-    total = len(db_rows)
+    # A stock can appear more than once in stock_master after source refreshes.
+    # Report one row per symbol so all numerator/denominator metrics use the
+    # same current dataset.
+    data = {row["symbol"]: row for row in db_rows if row.get("symbol")}
+    report_rows = list(data.values())
+    total = len(report_rows)
 
     cache_time = st.session_state.get("cache_time", "Veritabani kaydi")
     st.info(f"Son cache guncelleme: {cache_time} | Veritabanindaki hisse: {total}")
     latest_recorded = max(
-        (row.get("recorded_at") or "" for row in db_rows),
+        (row.get("recorded_at") or "" for row in report_rows),
         default="Bilinmiyor",
     )
     source_time = f"Son veritabani kaydi: {latest_recorded}"
 
     # Ozet istatistikler
-    has_price = sum(1 for s in db_rows if s.get("last_price", 0) and s["last_price"] > 0)
-    has_mcap = sum(1 for s in db_rows if s.get("market_cap", 0) and s["market_cap"] > 0)
-    has_ndebt = sum(1 for s in db_rows if s.get("net_debt") is not None)
-    has_float = sum(1 for s in db_rows if s.get("floating_shares", 0) and s["floating_shares"] > 0)
-    has_analysis = sum(1 for s in db_rows if s.get("calculated_value", 0) and s["calculated_value"] > 0)
-    has_signal = sum(1 for s in db_rows if s.get("signal") and s["signal"] not in ["Veri Yetersiz", "Deger Giriniz"])
+    has_price = sum(1 for s in report_rows if (s.get("last_price") or 0) > 0)
+    has_mcap = sum(1 for s in report_rows if (s.get("market_cap") or 0) > 0)
+    has_ndebt = sum(1 for s in report_rows if s.get("net_debt") is not None)
+    has_float = sum(1 for s in report_rows if (s.get("floating_shares") or 0) > 0)
+    has_analysis = sum(1 for s in report_rows if (s.get("calculated_value") or 0) > 0)
+    has_signal = sum(
+        1 for s in report_rows
+        if s.get("signal") and s["signal"] not in ["Veri Yetersiz", "Deger Giriniz"]
+    )
 
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric(
-            "Fiyat Verisi", f"{has_price} / {len(data)}",
+            "Fiyat Verisi", f"{has_price} / {total}",
             help=f"Kaynak: Mynet. {source_time}",
         )
     with col2:
         st.metric(
-            "Piyasa Degeri", f"{has_mcap} / {len(data)}",
+            "Piyasa Degeri", f"{has_mcap} / {total}",
             help=f"Kaynak: isyatirimhisse / Is Yatirim. {source_time}",
         )
     with col3:
         st.metric(
-            "Deger Analizi", f"{has_analysis} / {len(data)}",
+            "Deger Analizi", f"{has_analysis} / {total}",
             help=f"Kaynak: sistem hesaplamasi; girdiler KAP + Is Yatirim + Mynet. {source_time}",
         )
 
     col4, col5, col6 = st.columns(3)
     with col4:
         st.metric(
-            "Net Borc", f"{has_ndebt} / {len(data)}",
+            "Net Borc", f"{has_ndebt} / {total}",
             help=f"Kaynak: isyatirimhisse finansal tablolar veya Is Yatirim sirket verisi. {source_time}",
         )
     with col5:
         st.metric(
-            "Fiili Dolasim (KAP)", f"{has_float} / {len(data)}",
+            "Fiili Dolasim (KAP)", f"{has_float} / {total}",
             help=f"Kaynak: KAP fiili dolasim paylari. https://kap.org.tr/tr/tumKalemler/kpy41_acc5_fiili_dolasimdaki_pay. {source_time}",
         )
     with col6:
         st.metric(
-            "Sinyal Uretmis", f"{has_signal} / {len(data)}",
+            "Sinyal Uretmis", f"{has_signal} / {total}",
             help=f"Kaynak: sistem hesaplamasi; son fiyat / hesaplanan deger oranindan uretilir. {source_time}",
         )
 
     col7, col8, col9 = st.columns(3)
     with col7:
-        has_total_shares = sum(1 for s in db_rows if (s.get("total_shares") or 0) > 0)
+        has_total_shares = sum(1 for s in report_rows if (s.get("total_shares") or 0) > 0)
         st.metric(
             "Toplam Hisse", f"{has_total_shares} / {total}",
             help=f"Kaynak: KAP fiili dolasim verisi ve isyatirimhisse sermaye verisi. {source_time}",
         )
     with col8:
-        has_volume = sum(1 for s in db_rows if (s.get("volume") or 0) > 0)
+        has_volume = sum(1 for s in report_rows if (s.get("volume") or 0) > 0)
         st.metric(
             "Hacim Verisi", f"{has_volume} / {total}",
             help=f"Kaynak: Mynet fiyat veri servisi. {source_time}",
         )
     with col9:
-        has_valuation = sum(1 for s in db_rows if s.get("pe") is not None or s.get("pb") is not None)
+        has_valuation = sum(1 for s in report_rows if s.get("pe") is not None or s.get("pb") is not None)
         st.metric(
             "F/K veya PD/DD", f"{has_valuation} / {total}",
             help=f"Kaynak: isyatirimhisse / Is Yatirim finansal verileri. {source_time}",
@@ -246,6 +253,9 @@ def _data_status_report():
         ndebt = (s.get("net_debt") / 1_000_000) if s.get("net_debt") is not None else None
         frate = s.get("float_rate", 0) or 0
         fshares = s.get("floating_shares", 0) or 0
+        volume = s.get("volume", 0) or 0
+        total_shares = s.get("total_shares", 0) or 0
+        change_pct = s.get("change_pct", 0) or 0
         calc_val = s.get("calculated_value", 0) or 0
         signal = s.get("signal", "")
         pe = s.get("pe")
@@ -284,12 +294,12 @@ def _data_status_report():
             "Kod": code,
             "Sirket": (s.get("company_name", "") or "")[:30],
             "Fiyat (TL)": f"{price:.2f}" if has_p else "-",
-            "Degisim (%)": f"{s.get('change_pct', 0):+.2f}" if has_p else "-",
+            "Degisim (%)": f"{change_pct:+.2f}" if has_p else "-",
             "Yon": "▲" if s.get('change_direction') == 'up' else ("▼" if s.get('change_direction') == 'down' else "-"),
-            "Hacim (TL)": f"{s.get('volume', 0):,.0f}" if s.get('volume', 0) > 0 else "-",
+            "Hacim (TL)": f"{volume:,.0f}" if volume > 0 else "-",
             "Piyasa Degeri (mn)": f"{mcap:,.1f}" if has_m else "-",
             "Net Borc (mn)": f"{ndebt:,.1f}" if has_n else "-",
-            "Toplam Hisse": f"{s.get('total_shares', 0):,.0f}" if s.get('total_shares', 0) > 0 else "-",
+            "Toplam Hisse": f"{total_shares:,.0f}" if total_shares > 0 else "-",
             "Fiili Dolasim (%)": f"{frate:.2f}" if has_f else "-",
             "Fiili Hisse": f"{fshares:,.0f}" if has_f else "-",
             "F/K (PE)": f"{pe:.2f}" if pe else "-",
