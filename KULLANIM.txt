@@ -1,0 +1,91 @@
+# BIST Hisse Analiz Platformu
+
+## 1. Flash Disk ile Kullanim (Windows)
+
+1. Bu klasoru flash diske kopyalayin
+2. Flash diski hedef bilgisayara takin
+3. `setup.bat` calistirin (ilk seferde 2-5 dk surer)
+4. `start.bat` ile baslatin
+
+## 2. VPS'e Kurulum (Ubuntu/Debian)
+
+```bash
+# Sunucuya baglan
+ssh root@SUNUCU-IP
+
+# Kurulum scriptini yukle ve calistir
+chmod +x setup_vps.sh
+sudo ./setup_vps.sh
+
+# Proje dosyalarini yukle
+sudo -u borsa cp -r /path/to/Python\ Borsa/* /home/borsa/borsa/
+sudo -u borsa cp -r /path/to/Python\ Borsa/.env* /home/borsa/borsa/
+
+# Veritabanini baslat
+sudo -u borsa /home/borsa/borsa/venv/bin/python -c "from data.database.models import init_db; init_db()"
+
+# Servisi baslat
+sudo systemctl start borsa
+```
+
+## 3. PythonAnywhere Kurulumu
+
+```bash
+# PythonAnywhere'de Bash console ac
+# Kurulum scriptini calistir
+chmod +x setup_pa.sh
+./setup_pa.sh
+```
+
+Sonra web arayuzunden:
+1. Dashboard > Web > WSGI configuration file
+2. Dashboard > Web > Add new web app > Manual config
+3. Dashboard > Tasks > Add new task (Always-on)
+
+Detayli talimatlar icin `PYTHONANYWHERE.md` dosyasina bakin.
+
+## Dosyalar
+
+| Dosya | Aciklama |
+|-------|----------|
+| `start.bat` | Windows - Her seyi baslatir |
+| `setup.bat` | Windows - Kutuphaneleri yukler |
+| `setup_vps.sh` | VPS - Tam otomatik kurulum |
+| `setup_pa.sh` | PythonAnywhere - Kurulum |
+| `run_all.py` | API + Dashboard baslatir |
+| `run_api.py` | Sadece API baslatir |
+| `durdur.bat` | Windows - Tum servisleri durdurur |
+| `otomatik_baslat.bat` | Windows - Baslangicta otomatik baslatma |
+
+## Gereksinimler
+
+- Python 3.10+ (PATH'e eklenmis olmali)
+- Internet baglantisi (ilk kurulum icin)
+
+## Erisim
+
+| Platform | Dashboard | API | API Docs |
+|----------|-----------|-----|----------|
+| Windows | localhost:8501 | localhost:8000 | localhost:8000/docs |
+| VPS | SUNUCU-IP | SUNUCU-IP/api/ | SUNUCU-IP/docs |
+| PythonAnywhere | kullanici.pythonanywhere.com | kullanici.pythonanywhere.com/api/ | kullanici.pythonanywhere.com/docs |
+
+## Ozellikler
+
+- Tum BIST hisselerinin anlik fiyatlari
+- Deger analizi ve AL/SAT sinyalleri
+- Teknik analiz (RSI, MACD, MA, Bollinger)
+- Portfoy yonetimi ve Excel import
+- Fiyat alarlari ve Telegram bildirimleri
+- PDF/Excel rapor uretimi
+- Admin paneli ile kullanici yonetimi
+- 15 dakikada bir otomatik fiyat guncelleme
+- Otomatik yedekleme sistemi
+
+## Notlar
+
+- Ilk acilista veriler ~2-3 dakikada yuklenir
+- Cache 1 saat boyunca gecerlidir
+- Internet yoksa cache'den calisir
+- Fiyat guncelleme her 15 dakikada bir Mynet'ten yapilir
+- Her guncelleme oncesi otomatik backup alinir

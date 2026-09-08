@@ -1,0 +1,14 @@
+.env
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/
+data/cache/
+*.log
+api_error.txt
+api_out.txt
+*.zip
+reports/daily/

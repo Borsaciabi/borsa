@@ -1,0 +1,35 @@
+# Veri Kutuphaneleri
+yfinance>=0.2.30
+isyatirimhisse>=5.0.1
+
+# Backend
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+gunicorn>=21.2.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.6
+
+# Telegram Bot
+python-telegram-bot>=22.8
+
+# Web Scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+httpx>=0.26.0
+
+# Veri Islem
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Dashboard
+streamlit>=1.30.0
+plotly>=5.18.0
+
+# Raporlama
+openpyxl>=3.1.0
+fpdf2>=2.7.0
+
+# Araclar
+python-dotenv>=1.0.0
