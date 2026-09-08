@@ -19,6 +19,114 @@ st.set_page_config(
     layout="wide",
 )
 st.set_option("client.showSidebarNavigation", False)
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+    :root {
+        --navy: #08111f;
+        --navy-soft: #101d31;
+        --panel: #12243b;
+        --panel-light: #18304d;
+        --line: rgba(148, 163, 184, .18);
+        --text: #e8f0f7;
+        --muted: #91a4b8;
+        --mint: #35d0ba;
+        --blue: #65a8ff;
+        --danger: #ff7184;
+    }
+    html, body, [class*="css"] {
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text);
+    }
+    .stApp {
+        background:
+            radial-gradient(circle at 8% 0%, rgba(53, 208, 186, .11), transparent 28rem),
+            radial-gradient(circle at 95% 5%, rgba(101, 168, 255, .10), transparent 30rem),
+            var(--navy);
+    }
+    [data-testid="stHeader"] { background: rgba(8, 17, 31, .82); }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0c192b 0%, #08111f 100%);
+        border-right: 1px solid var(--line);
+    }
+    [data-testid="stSidebar"] > div:first-child { padding-top: 1.4rem; }
+    [data-testid="stSidebar"] .stRadio label,
+    [data-testid="stSidebar"] .stMarkdown { color: var(--muted); }
+    h1, h2, h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        letter-spacing: -.035em;
+        color: var(--text);
+    }
+    h1 { font-size: clamp(2rem, 4vw, 3.2rem) !important; }
+    h2 { font-size: 1.65rem !important; }
+    h3 { font-size: 1.2rem !important; }
+    .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted); }
+    .stButton > button, .stDownloadButton > button {
+        border: 1px solid rgba(53, 208, 186, .36);
+        border-radius: 9px;
+        background: linear-gradient(135deg, rgba(53, 208, 186, .18), rgba(101, 168, 255, .15));
+        color: var(--text);
+        font-weight: 600;
+        transition: all .18s ease;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        border-color: var(--mint);
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(53, 208, 186, .14);
+    }
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #1bb89f, #3186db);
+        border: 0;
+    }
+    [data-testid="stMetric"] {
+        background: linear-gradient(145deg, rgba(18, 36, 59, .94), rgba(16, 29, 49, .94));
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, .14);
+    }
+    [data-testid="stMetricLabel"] { color: var(--muted); }
+    [data-testid="stMetricValue"] { color: var(--text); font-family: 'Space Grotesk', sans-serif; }
+    [data-baseweb="tab-list"] { gap: .45rem; border-bottom: 1px solid var(--line); }
+    [data-baseweb="tab"] { color: var(--muted); padding: .75rem 1rem; }
+    [aria-selected="true"][data-baseweb="tab"] { color: var(--mint); }
+    [data-testid="stExpander"] {
+        background: rgba(18, 36, 59, .58);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+    }
+    [data-testid="stDataFrame"] {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .app-brand {
+        padding: 1.1rem 1rem 1.35rem;
+        margin-bottom: .7rem;
+        border-bottom: 1px solid var(--line);
+    }
+    .app-brand-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        margin-right: .55rem;
+        border-radius: 11px;
+        background: linear-gradient(135deg, var(--mint), var(--blue));
+        color: var(--navy);
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 700;
+    }
+    .app-brand-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 700; }
+    .app-brand-subtitle { margin-top: .35rem; color: var(--muted); font-size: .75rem; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 if "stock_data" not in st.session_state:
     st.session_state.stock_data = {}
@@ -71,6 +179,12 @@ def _hidden_admin_entry():
 def _login_panel(hidden_admin=False):
     user = _current_user()
     if user:
+        st.sidebar.markdown(
+            f'<div class="app-brand"><span class="app-brand-mark">B</span>'
+            f'<span class="app-brand-title">Borsa Analiz</span>'
+            f'<div class="app-brand-subtitle">Merhaba, {user["username"]}</div></div>',
+            unsafe_allow_html=True,
+        )
         st.sidebar.success(f"Giris: {user['username']} ({user.get('role', 'user')})")
         if st.sidebar.button("Cikis Yap", key="logout_button", use_container_width=True):
             st.session_state.user = None
@@ -81,6 +195,12 @@ def _login_panel(hidden_admin=False):
         return
 
     title = "Yonetici Girisi" if hidden_admin else "Kullanici Girisi"
+    st.sidebar.markdown(
+        '<div class="app-brand"><span class="app-brand-mark">B</span>'
+        '<span class="app-brand-title">Borsa Analiz</span>'
+        '<div class="app-brand-subtitle">Piyasa verilerini sade ve anlaşılır takip edin</div></div>',
+        unsafe_allow_html=True,
+    )
     with st.sidebar.expander(title, expanded=hidden_admin):
         with st.form("login_form"):
             username = st.text_input("Kullanici adi")

@@ -41,7 +41,8 @@ def render_investing_dashboard():
 
     col_title, col_refresh, col_price = st.columns([4, 1, 1])
     with col_title:
-        st.title("BIST Hisse Analiz Platformu")
+        st.title("Piyasa Panosu")
+        st.caption("BIST hisselerini fiyat, deger ve sinyal bazinda tek ekranda takip edin.")
         st.caption(f"Son guncelleme: {cache_time} | Toplam hisse: {len(data)}")
     with col_refresh:
         if current_user.get("role") == "admin":

@@ -9,7 +9,8 @@ API_URL = "http://localhost:8000"
 
 
 def render_reports():
-    st.title("Raporlar")
+    st.title("Rapor Merkezi")
+    st.caption("Hisse raporlari, degerleme ciktilari ve veri kalitesini tek yerden yonetin.")
 
     tab1, tab2, tab3, tab4 = st.tabs([
         "Hisse Raporu", "Deger Analizi Excel", "Gunluk Piyasa", "Veri Durumu"
