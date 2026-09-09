@@ -174,15 +174,26 @@ def _data_status_report():
         st.info("Veritabaninda piyasa verisi bulunmuyor. Veri Durumunu Guncelle butonunu kullanin.")
         return
 
-    # A stock can appear more than once in stock_master after source refreshes.
-    # Report one row per symbol so all numerator/denominator metrics use the
-    # same current dataset.
-    data = {row["symbol"]: row for row in db_rows if row.get("symbol")}
+    # stock_master may still contain the original seeded BIST list. The
+    # current market universe is the KAP fiili dolasim set, identified by its
+    # persisted floating-share data.
+    data = {
+        row["symbol"]: row
+        for row in db_rows
+        if row.get("symbol")
+        and (row.get("floating_shares") or 0) > 0
+        and (row.get("float_rate") or 0) > 0
+    }
     report_rows = list(data.values())
     total = len(report_rows)
 
     cache_time = st.session_state.get("cache_time", "Veritabani kaydi")
-    st.info(f"Son cache guncelleme: {cache_time} | Veritabanindaki hisse: {total}")
+    st.info(f"Son cache guncelleme: {cache_time} | KAP fiili dolasim hissesi: {total}")
+    if len(db_rows) != total:
+        st.caption(
+            f"Stock master tablosunda {len(db_rows)} kayit bulunuyor; "
+            "rapor sayisi yalnizca KAP fiili dolasim verisi bulunan hisseleri kapsar."
+        )
     db = DBManager()
     tables = db.get_database_tables()
     if tables:
