@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+from web.ui_styles import render_signed_dataframe
 
 API_URL = "http://localhost:8000"
 
@@ -167,7 +168,11 @@ def _show_portfolio():
                 "Kar %": f"%{kar_pct:+.1f}",
             })
 
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        render_signed_dataframe(
+            pd.DataFrame(rows),
+            ["Kar/Zarar", "Kar %"],
+            width="stretch",
+        )
 
         st.divider()
         col1, col2, col3 = st.columns(3)

@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.graph_objects as go
 from analysis.value_analysis import ValueAnalyzer
 from data.cache.preloader import DataPreloader
+from web.ui_styles import render_signed_dataframe
 
 analyzer = ValueAnalyzer()
 
@@ -61,7 +62,7 @@ def render_value_analysis():
     if rows:
         import pandas as pd
         df = pd.DataFrame(rows).sort_values("Oran", ascending=True)
-        st.dataframe(df, use_container_width=True, height=500)
+        render_signed_dataframe(df, ["Kar %"], width="stretch", height=500)
 
 
 def _display_cached_result(data: dict, symbol: str):

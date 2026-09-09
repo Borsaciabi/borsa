@@ -1,6 +1,7 @@
 import streamlit as st
 from data.cache.preloader import DataPreloader
 import plotly.graph_objects as go
+from web.ui_styles import render_signed_dataframe
 
 
 def _get_data():
@@ -60,7 +61,11 @@ def _display_comparison(data: dict, symbols: list):
 
     if rows:
         import pandas as pd
-        st.table(pd.DataFrame(rows))
+        render_signed_dataframe(
+            pd.DataFrame(rows),
+            ["Kar %"],
+            width="stretch",
+        )
 
     # Bar grafigi
     st.subheader("Deger vs Fiyat Karsilastirmasi")
