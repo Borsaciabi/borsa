@@ -111,6 +111,11 @@ class DataPreloader:
                     self._all_data[code]["market_cap_mn"] = piyasa / 1e6
                 if sermaye > 0:
                     self._all_data[code]["total_shares"] = sermaye
+                    price = self._all_data[code].get("last_price", 0) or 0
+                    if price > 0:
+                        normalized_market_cap = price * sermaye
+                        self._all_data[code]["market_cap"] = normalized_market_cap
+                        self._all_data[code]["market_cap_mn"] = normalized_market_cap / 1e6
                 if fk > 0:
                     self._all_data[code]["pe"] = fk
                 if oz_sermaye > 0 and piyasa > 0:
@@ -219,6 +224,18 @@ class DataPreloader:
             ndebt = d.get("net_debt", 0) or 0
             frate = d.get("float_rate", 0) or 0
             fshares = d.get("floating_shares", 0) or 0
+            total_shares = d.get("total_shares", 0) or 0
+
+            # KAP fiili dolasim orani ve adedi, toplam hisseyi Asenax sermaye
+            # birimlerinden daha guvenilir sekilde belirler.
+            if frate > 0 and fshares > 0:
+                total_shares = fshares / (frate / 100)
+                d["total_shares"] = total_shares
+
+            if price > 0 and total_shares > 0:
+                mcap = price * total_shares
+                d["market_cap"] = mcap
+                d["market_cap_mn"] = mcap / 1e6
 
             if mcap > 0 and fshares > 0:
                 # Bankalar icin net borc kullanma (is modeli geregi yuksek)
@@ -521,6 +538,16 @@ class DataPreloader:
             ndebt = d.get("net_debt", 0) or 0
             frate = d.get("float_rate", 0) or 0
             fshares = d.get("floating_shares", 0) or 0
+            total_shares = d.get("total_shares", 0) or 0
+
+            if frate > 0 and fshares > 0:
+                total_shares = fshares / (frate / 100)
+                d["total_shares"] = total_shares
+
+            if price > 0 and total_shares > 0:
+                mcap = price * total_shares
+                d["market_cap"] = mcap
+                d["market_cap_mn"] = mcap / 1e6
 
             if mcap > 0 and fshares > 0:
                 if code in BANKS:
