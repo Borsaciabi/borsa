@@ -40,6 +40,20 @@ def _get_prices_fast():
     return prices
 
 
+def _get_daily_changes():
+    """Portfoy hisseleri icin piyasa verisindeki gunluk degisim oranlarini al."""
+    changes = st.session_state.get("portfolio_changes", {}).copy()
+    stock_data = st.session_state.get("stock_data", {})
+    for code, stock in stock_data.items():
+        change = stock.get("change_pct")
+        if change is not None:
+            try:
+                changes[code] = float(change)
+            except (TypeError, ValueError):
+                continue
+    return changes
+
+
 def _refresh_prices():
     """Mynet'ten tum fiyatlari cek."""
     try:
@@ -47,9 +61,13 @@ def _refresh_prices():
         mynet = MynetFetcher()
         all_stocks = mynet.fetch_all()
         prices = {}
+        changes = {}
         for s in all_stocks:
             prices[s["stock_code"]] = s["last_price"]
+            if s.get("change_pct") is not None:
+                changes[s["stock_code"]] = s["change_pct"]
         st.session_state.portfolio_prices = prices
+        st.session_state.portfolio_changes = changes
         return prices
     except Exception as e:
         st.warning(f"Fiyat guncellenemedi: {e}")
@@ -135,6 +153,7 @@ def _show_portfolio():
 
         # Fiyatlari al
         prices = _get_prices_fast()
+        daily_changes = _get_daily_changes()
         position_by_code = {pos["stock_code"]: pos for pos in positions}
 
         selected_codes = st.multiselect(
@@ -210,6 +229,7 @@ def _show_portfolio():
                 "Miktar": qty,
                 "Ort. Alis": f"{avg_price:.2f}",
                 "Guncel Fiyat": f"{current_price:.2f}",
+                "Gunluk Degisim": f"%{daily_changes.get(symbol, 0):+.2f}",
                 "Deger": f"{deger:,.2f}",
                 "Kar/Zarar": f"{kar:+,.2f}",
                 "Kar %": f"%{kar_pct:+.1f}",
@@ -217,7 +237,7 @@ def _show_portfolio():
 
         render_signed_dataframe(
             pd.DataFrame(rows),
-            ["Kar/Zarar", "Kar %"],
+            ["Gunluk Degisim", "Kar/Zarar", "Kar %"],
             width="stretch",
         )
 
