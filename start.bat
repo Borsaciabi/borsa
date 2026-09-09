@@ -10,6 +10,12 @@ echo.
 
 cd /d "%~dp0"
 
+if exist "%USERPROFILE%\Desktop\Yapay Zeka\Python Borsa\.env" (
+    set "BORSA_ENV_FILE=%USERPROFILE%\Desktop\Yapay Zeka\Python Borsa\.env"
+) else if exist "%USERPROFILE%\BorsaAnalizData\.env" (
+    set "BORSA_ENV_FILE=%USERPROFILE%\BorsaAnalizData\.env"
+)
+
 echo [1/4] Kutuphaneler kontrol ediliyor...
 python -c "import fastapi, uvicorn, streamlit, yfinance, requests, bs4, pandas, plotly" >nul 2>&1
 if errorlevel 1 (
@@ -37,9 +43,9 @@ timeout /t 5 /nobreak >nul
 echo [5/5] Telegram bot kontrol ediliyor...
 python -c "from config.settings import TELEGRAM_BOT_TOKEN; raise SystemExit(0 if TELEGRAM_BOT_TOKEN else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo Telegram bot atlandi: TELEGRAM_BOT_TOKEN ayarlanmamis
+    echo Telegram bot atlandi: TELEGRAM_BOT_TOKEN bulunamadi
 ) else (
-    start "BIST-Telegram" /min python run_bot.py
+    start "BIST-Telegram" /min cmd /c "python run_bot.py"
     echo Telegram bot baslatildi
 )
 

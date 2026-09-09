@@ -8,7 +8,12 @@ if os.getenv("PYTHONANYWHERE_DOMAIN"):
 else:
     BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+env_file = os.getenv("BORSA_ENV_FILE")
+if env_file:
+    load_dotenv(env_file)
+else:
+    load_dotenv(BASE_DIR / ".env")
+    load_dotenv(Path.home() / "BorsaAnalizData" / ".env", override=False)
 
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-me")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
