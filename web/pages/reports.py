@@ -23,6 +23,18 @@ def _format_report_value(value):
     return f"{value:,.1f}" if value else "-"
 
 
+def _signed_report_style(value):
+    try:
+        numeric = float(str(value).replace("%", "").replace(",", "").strip())
+    except (TypeError, ValueError):
+        return ""
+    if numeric > 0:
+        return "color: #7ef2b5; background-color: rgba(22, 163, 74, .16); font-weight: 600"
+    if numeric < 0:
+        return "color: #ff9aa8; background-color: rgba(220, 38, 38, .16); font-weight: 600"
+    return "color: #b5c2d0"
+
+
 def render_reports():
     st.title("Rapor Merkezi")
     st.caption("Hisse raporlari, degerleme ciktilari ve veri kalitesini tek yerden yonetin.")
@@ -351,7 +363,9 @@ def _data_status_report():
     if rows:
         df = pd.DataFrame(rows)
         st.dataframe(
-            df,
+            df.style.map(_signed_report_style, subset=[
+                "Degisim (%)", "Net Borc (mn)", "Net Kar", "Kar Beklentisi (%)"
+            ]),
             use_container_width=True,
             height=600,
             column_config={

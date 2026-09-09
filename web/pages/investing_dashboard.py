@@ -20,6 +20,27 @@ SIGNAL_COLORS = {
 }
 
 
+def _signed_value_style(value):
+    """Use soft semantic colors for gains/losses in dataframe cells."""
+    try:
+        numeric = float(str(value).replace("%", "").replace(",", "").strip())
+    except (TypeError, ValueError):
+        return ""
+    if numeric > 0:
+        return "color: #7ef2b5; background-color: rgba(22, 163, 74, .16); font-weight: 600"
+    if numeric < 0:
+        return "color: #ff9aa8; background-color: rgba(220, 38, 38, .16); font-weight: 600"
+    return "color: #b5c2d0"
+
+
+def _styled_signed_dataframe(frame, columns, **kwargs):
+    available = [column for column in columns if column in frame.columns]
+    styler = frame.style
+    if available:
+        styler = styler.map(_signed_value_style, subset=available)
+    st.dataframe(styler, **kwargs)
+
+
 def render_investing_dashboard():
     loader = DataPreloader()
     current_user = st.session_state.get("user")
@@ -230,7 +251,7 @@ def _render_all_stocks_table(data: dict):
         }
         sort_col = sort_map.get(sort_by, "Piyasa Deg (mn)")
         df = df.sort_values(sort_col, ascending=False)
-        st.dataframe(df, use_container_width=True, height=600)
+        _styled_signed_dataframe(df, ["Degisim (%)", "Kar %"], width="stretch", height=600)
         st.info(f"{len(rows)} / {total_count} hisse gosteriliyor")
     else:
         st.warning("Arama kriterlerinize uygun hisse bulunamadi.")
@@ -416,7 +437,12 @@ def _render_al_sat_recommendations(data: dict):
 
     # Tablo
     st.markdown("### Tum Sonuclar")
-    st.dataframe(pd.DataFrame(filtered), use_container_width=True, height=500)
+    _styled_signed_dataframe(
+        pd.DataFrame(filtered),
+        ["Degisim %", "Kar %"],
+        width="stretch",
+        height=500,
+    )
 
 
 def _render_value_analysis_table(data: dict):
@@ -444,7 +470,7 @@ def _render_value_analysis_table(data: dict):
     if rows:
         df = pd.DataFrame(rows)
         df = df.sort_values("Oran", ascending=True)
-        st.dataframe(df, use_container_width=True, height=600)
+        _styled_signed_dataframe(df, ["Kar (%)"], width="stretch", height=600)
     else:
         st.warning("Deger analizi yapilacak hisse bulunamadi.")
 
@@ -459,7 +485,7 @@ def _render_top_movers(data: dict):
         if top_up:
             rows = [{"Kod": s["stock_code"], "Fiyat": f"{s.get('last_price', 0):.2f}",
                       "Degisim": f"%{s.get('change_pct', 0):+.2f}", "Sinyal": s.get("signal", "")} for s in top_up]
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+            _styled_signed_dataframe(pd.DataFrame(rows), ["Degisim"], width="stretch")
 
     with col2:
         st.subheader("En Cok Dusenler")
@@ -467,7 +493,7 @@ def _render_top_movers(data: dict):
         if top_down:
             rows = [{"Kod": s["stock_code"], "Fiyat": f"{s.get('last_price', 0):.2f}",
                       "Degisim": f"%{s.get('change_pct', 0):+.2f}", "Sinyal": s.get("signal", "")} for s in top_down]
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+            _styled_signed_dataframe(pd.DataFrame(rows), ["Degisim"], width="stretch")
 
     st.subheader("AL Sinyali Verenler")
     al_stocks = [s for s in data.values() if s.get("signal") in ["AL", "Evi Barki Sat"]]
@@ -478,7 +504,7 @@ def _render_top_movers(data: dict):
                   "Kar %": f"%{s.get('expected_return', 0):+.1f}",
                   "Sinyal": s.get("signal", "")} for s in
                  sorted(al_stocks, key=lambda x: x.get("expected_return", 0), reverse=True)]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+        _styled_signed_dataframe(pd.DataFrame(rows), ["Kar %"], width="stretch")
     else:
         st.warning("Su an AL sinyali veren hisse bulunmuyor.")
 
