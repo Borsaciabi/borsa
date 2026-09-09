@@ -27,6 +27,8 @@ def render_investing_dashboard():
         current_user = {}
 
     data = st.session_state.get("stock_data", {})
+    if not isinstance(data, dict):
+        data = {}
     cache_time = st.session_state.get("cache_time", "Bilinmiyor")
 
     if not data:
@@ -40,6 +42,10 @@ def render_investing_dashboard():
             st.session_state.stock_data = data
             st.session_state.cache_time = loader.get_cache_time()
             cache_time = st.session_state.cache_time
+
+    if not data:
+        st.error("Piyasa verisi bulunamadi. Admin kullanici olarak Verileri Guncelle dugmesine basin.")
+        return
 
     col_title, col_refresh, col_price = st.columns([4, 1, 1])
     with col_title:

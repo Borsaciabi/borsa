@@ -590,6 +590,16 @@ class DataPreloader:
                 )
             }
             restored[code]["stock_code"] = code
+            market_cap = restored[code].get("market_cap") or 0
+            net_debt = restored[code].get("net_debt") or 0
+            price = restored[code].get("last_price") or 0
+            calculated_value = restored[code].get("calculated_value") or 0
+            restored[code]["market_cap_mn"] = market_cap / 1_000_000
+            restored[code]["net_debt_mn"] = net_debt / 1_000_000
+            restored[code]["expected_return"] = (
+                ((calculated_value - price) / price) * 100
+                if price > 0 and calculated_value > 0 else 0
+            )
         self._all_data = restored
         return restored
 
