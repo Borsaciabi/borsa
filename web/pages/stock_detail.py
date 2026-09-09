@@ -5,7 +5,7 @@ from data.cache.preloader import DataPreloader
 from data.fetchers.bist_fetcher import BistFetcher
 from data.fetchers.yahoo_fetcher import YahooFetcher
 from data.database.db_manager import DBManager
-from pages.news import render_news
+from pages.news import render_news, render_pay_tedbirleri
 import plotly.graph_objects as go
 
 tech = TechnicalAnalyzer()
@@ -76,6 +76,7 @@ def _run_analysis(data: dict, symbol: str, period: str):
     tabs = st.tabs(["Genel Bakis", "Teknik Analiz", "Finansallar", "Benim Gorusum"])
     with tabs[0]:
         _render_snapshot(s, price, change, mcap, ndebt, frate, fshares, calc_val, ratio, exp_ret, signal)
+        render_pay_tedbirleri(symbol=symbol)
         render_news(symbol=symbol, limit=10, title=f"{symbol} KAP Haberleri")
 
     with tabs[1]:
