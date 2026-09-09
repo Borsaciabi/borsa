@@ -101,6 +101,18 @@ class DBManager:
 
     def sell_stock(self, user_id, stock_code, sell_date, sell_price, quantity, fees=0):
         conn = self._get_conn()
+        available = conn.execute(
+            """SELECT COALESCE(SUM(CASE WHEN transaction_type='BUY' THEN quantity ELSE 0 END), 0)
+                      - COALESCE(SUM(CASE WHEN transaction_type='SELL' THEN quantity ELSE 0 END), 0)
+               FROM user_portfolios
+               WHERE user_id = ? AND stock_code = ?""",
+            (user_id, stock_code),
+        ).fetchone()[0]
+        if quantity <= 0 or quantity > available:
+            conn.close()
+            raise ValueError(
+                f"{stock_code} icin satilabilir miktar {available}, istenen miktar {quantity}"
+            )
         conn.execute(
             """INSERT INTO user_portfolios
                (user_id, stock_code, sell_date, sell_price, quantity,
@@ -110,6 +122,16 @@ class DBManager:
         )
         conn.commit()
         conn.close()
+
+    def delete_portfolio_stock(self, user_id, stock_code):
+        conn = self._get_conn()
+        cursor = conn.execute(
+            "DELETE FROM user_portfolios WHERE user_id = ? AND stock_code = ?",
+            (user_id, stock_code),
+        )
+        conn.commit()
+        conn.close()
+        return cursor.rowcount
 
     def get_portfolio(self, user_id):
         conn = self._get_conn()

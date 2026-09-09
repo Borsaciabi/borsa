@@ -135,6 +135,53 @@ def _show_portfolio():
 
         # Fiyatlari al
         prices = _get_prices_fast()
+        position_by_code = {pos["stock_code"]: pos for pos in positions}
+
+        selected_codes = st.multiselect(
+            "Hisseleri secin",
+            options=list(position_by_code),
+            format_func=lambda code: f"{code} ({position_by_code[code]['net_quantity']} adet)",
+            key="portfolio_selected_codes",
+            help="Secilen hisseleri tek seferde silebilir veya mevcut fiyatla tamamen satabilirsiniz.",
+        )
+        if selected_codes:
+            action_col, sell_date_col, fee_col = st.columns([1.4, 1.2, 1])
+            with action_col:
+                action = st.selectbox(
+                    "Toplu islem",
+                    ["Secilenleri sil", "Secilenleri tamamen sat"],
+                    key="portfolio_bulk_action",
+                )
+            with sell_date_col:
+                bulk_sell_date = st.date_input("Satis tarihi", key="portfolio_bulk_sell_date")
+            with fee_col:
+                bulk_fees = st.number_input(
+                    "Hisse basi komisyon (TL)",
+                    min_value=0.0,
+                    step=0.01,
+                    key="portfolio_bulk_fees",
+                )
+            delete_confirmed = True
+            if action == "Secilenleri sil":
+                delete_confirmed = st.checkbox(
+                    "Secilen hisselerin tum islem kayitlarini silmeyi onayliyorum",
+                    key="portfolio_delete_confirmed",
+                )
+            if st.button("Secilenlere uygula", type="primary", key="portfolio_bulk_apply"):
+                if action == "Secilenleri sil":
+                    if not delete_confirmed:
+                        st.warning("Silme islemi icin onay kutusunu isaretleyin.")
+                        return
+                    _delete_selected_stocks(selected_codes)
+                else:
+                    _sell_selected_stocks(
+                        selected_codes,
+                        position_by_code,
+                        prices,
+                        bulk_sell_date,
+                        bulk_fees,
+                    )
+                st.rerun()
 
         # Tablo
         rows = []
@@ -186,6 +233,53 @@ def _show_portfolio():
 
     except Exception as e:
         st.warning(f"Portfoy yuklenemedi: {e}")
+
+
+def _delete_selected_stocks(stock_codes):
+    try:
+        failures = []
+        for code in stock_codes:
+            response = requests.delete(
+                f"{API_URL}/api/portfolio/{code}",
+                headers=_auth_headers(),
+                timeout=5,
+            )
+            if response.status_code != 200:
+                failures.append(response.json().get("detail", code))
+        if failures:
+            st.error(f"Silinemeyen hisseler: {', '.join(failures)}")
+        else:
+            st.success(f"{len(stock_codes)} hisse portfoyden silindi.")
+    except Exception as exc:
+        st.warning(f"Toplu silme basarisiz: {exc}")
+
+
+def _sell_selected_stocks(selected_codes, positions, prices, sell_date, fees):
+    sell_prices = {}
+    for code in selected_codes:
+        price = prices.get(code) or positions[code].get("avg_buy_price", 0)
+        if not price or price <= 0:
+            st.error(f"{code} icin satis fiyati bulunamadi.")
+            return
+        sell_prices[code] = price
+    try:
+        response = requests.post(
+            f"{API_URL}/api/portfolio/sell-many",
+            json={
+                "stock_codes": selected_codes,
+                "sell_date": str(sell_date),
+                "sell_prices": sell_prices,
+                "fees": fees,
+            },
+            headers=_auth_headers(),
+            timeout=10,
+        )
+        if response.status_code == 200:
+            st.success(response.json()["message"])
+        else:
+            st.error(response.json().get("detail", "Toplu satis basarisiz"))
+    except Exception as exc:
+        st.warning(f"Toplu satis basarisiz: {exc}")
 
 
 def _buy_form():

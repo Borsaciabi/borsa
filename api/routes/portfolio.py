@@ -32,6 +32,13 @@ class SellRequest(BaseModel):
     user_id: int | None = None
 
 
+class MultiSellRequest(BaseModel):
+    stock_codes: list[str]
+    sell_date: date
+    sell_prices: dict[str, float] = {}
+    fees: float = 0
+
+
 @router.get("")
 def get_portfolio(current_user=Depends(get_current_user)):
     user_id = current_user["id"]
@@ -60,15 +67,55 @@ def buy_stock(req: BuyRequest, current_user=Depends(get_current_user)):
 
 @router.post("/sell")
 def sell_stock(req: SellRequest, current_user=Depends(get_current_user)):
-    db.sell_stock(
-        user_id=current_user["id"],
-        stock_code=req.stock_code.upper(),
-        sell_date=str(req.sell_date),
-        sell_price=req.sell_price,
-        quantity=req.quantity,
-        fees=req.fees,
-    )
+    try:
+        db.sell_stock(
+            user_id=current_user["id"],
+            stock_code=req.stock_code.upper(),
+            sell_date=str(req.sell_date),
+            sell_price=req.sell_price,
+            quantity=req.quantity,
+            fees=req.fees,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"message": f"{req.stock_code} satisi basariyla kaydedildi"}
+
+
+@router.post("/sell-many")
+def sell_many_stocks(req: MultiSellRequest, current_user=Depends(get_current_user)):
+    stock_codes = list(dict.fromkeys(code.strip().upper() for code in req.stock_codes if code.strip()))
+    if not stock_codes:
+        raise HTTPException(status_code=400, detail="En az bir hisse secilmelidir")
+    if req.fees < 0:
+        raise HTTPException(status_code=400, detail="Komisyon negatif olamaz")
+
+    positions = {
+        position["stock_code"]: position
+        for position in db.get_active_positions(current_user["id"])
+    }
+    missing = [code for code in stock_codes if code not in positions]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Portfoyde bulunmayan hisseler: {', '.join(missing)}")
+
+    completed = []
+    try:
+        for code in stock_codes:
+            price = req.sell_prices.get(code)
+            if price is None or price <= 0:
+                raise HTTPException(status_code=400, detail=f"{code} icin gecersiz satis fiyati")
+            db.sell_stock(
+                user_id=current_user["id"],
+                stock_code=code,
+                sell_date=str(req.sell_date),
+                sell_price=price,
+                quantity=int(positions[code]["net_quantity"]),
+                fees=req.fees,
+            )
+            completed.append(code)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return {"message": f"{len(completed)} hisse tamamen satildi", "stock_codes": completed}
 
 
 @router.get("/positions")
@@ -94,6 +141,15 @@ def delete_all_portfolio(current_user=Depends(get_current_user)):
     """Tum portfoy islemlerini siler."""
     db.delete_all_portfolio(current_user["id"])
     return {"message": "Tum portfoy silindi"}
+
+
+@router.delete("/{stock_code}")
+def delete_portfolio_stock(stock_code: str, current_user=Depends(get_current_user)):
+    code = stock_code.strip().upper()
+    deleted = db.delete_portfolio_stock(current_user["id"], code)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"{code} portfoyde bulunamadi")
+    return {"message": f"{code} portfoyden silindi"}
 
 
 @router.post("/import-excel")
