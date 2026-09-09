@@ -14,6 +14,7 @@ from pages.alerts import render_alerts
 from pages.reports import render_reports
 from pages.admin_panel import render_admin_panel
 from pages.news import render_news, render_pay_tedbirleri, refresh_news_sources
+from pages.recommendations import render_recommendations
 
 st.set_page_config(
     page_title="BIST Analiz Platformu",
@@ -361,12 +362,13 @@ menu = [
     "Raporlar",
     "KAP Haberleri",
     "Pay Tedbirleri",
+    "Öneri Sistemi",
 ]
 current_user = _current_user()
 if current_user and current_user.get("role") == "admin":
     menu.append("Admin Paneli")
 if not current_user:
-    menu = ["Piyasa Dashboard", "KAP Haberleri", "Pay Tedbirleri"]
+    menu = ["Piyasa Dashboard", "KAP Haberleri", "Pay Tedbirleri", "Öneri Sistemi"]
 if st.session_state.page not in menu:
     st.session_state.page = "Piyasa Dashboard"
 st.session_state.page = st.sidebar.radio(
@@ -399,6 +401,8 @@ elif page == "KAP Haberleri":
     render_news()
 elif page == "Pay Tedbirleri":
     render_pay_tedbirleri()
+elif page == "Öneri Sistemi":
+    render_recommendations()
 elif page == "Admin Paneli":
     if current_user and current_user.get("role") == "admin":
         render_admin_panel()
