@@ -77,6 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/deger THYAO - Deger analizi\n"
         "/sorgu THYAO - Teknik analiz\n"
         "/portfoy - Portfoy goruntule\n"
+        "/durum - Portfoy toplam durumunu goruntule\n"
         "/alis THYAO 250 100 - Alis kaydet (fiyat, miktar)\n"
         "/satis THYAO 300 50 - Satis kaydet\n"
         "/alarm THYAO > 250 - Alarm kur\n"
@@ -95,6 +96,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/deger THYAO - Deger analizi\n"
         "/sorgu THYAO - Teknik analiz\n"
         "/portfoy - Portfoy goruntule\n"
+        "/durum - Portfoy toplam durumunu goruntule\n"
         "/alis THYAO 250 100 - Alis kaydet\n"
         "/satis THYAO 300 50 - Satis kaydet\n"
         "/alarm THYAO > 250 - Alarm kur\n"
@@ -323,6 +325,57 @@ async def portfolio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(text)
 
 
+async def portfolio_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Portfoyun sadece toplam durumunu gosterir."""
+    user = await require_login(update)
+    if not user:
+        return
+
+    trades = db.get_portfolio(user["id"])
+    if not trades:
+        await update.effective_message.reply_text("Portfoyde hisse bulunmuyor.")
+        return
+
+    data = preloader.load_cache_with_backup()
+    grouped = {}
+    for trade in trades:
+        symbol = trade["stock_code"].upper()
+        item = grouped.setdefault(
+            symbol,
+            {"buy_qty": 0, "sell_qty": 0, "buy_total": 0.0, "sell_total": 0.0, "fees": 0.0},
+        )
+        quantity = trade.get("quantity") or 0
+        item["fees"] += trade.get("fees") or 0
+        if trade.get("transaction_type") == "BUY":
+            item["buy_qty"] += quantity
+            item["buy_total"] += (trade.get("buy_price") or 0) * quantity
+        else:
+            item["sell_qty"] += quantity
+            item["sell_total"] += (trade.get("sell_price") or 0) * quantity
+
+    total_value = 0.0
+    total_cost = 0.0
+    total_profit = 0.0
+    for symbol, item in grouped.items():
+        net_qty = item["buy_qty"] - item["sell_qty"]
+        current_price = (data.get(symbol, {}) or {}).get("last_price") or 0
+        current_value = net_qty * current_price if net_qty > 0 else 0
+        total_value += current_value
+        total_cost += item["buy_total"]
+        total_profit += (
+            item["sell_total"] + current_value - item["buy_total"] - item["fees"]
+        )
+
+    await update.effective_message.reply_text(
+        "PORTFOY DURUMU\n"
+        + "=" * 24
+        + "\n"
+        f"Toplam Deger: {total_value:,.2f} TL\n"
+        f"Toplam Maliyet: {total_cost:,.2f} TL\n"
+        f"Toplam Kar/Zarar: {total_profit:+,.2f} TL"
+    )
+
+
 async def buy_stock(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await require_login(update)
     if not user:
@@ -512,6 +565,7 @@ async def configure_command_menu(application: Application):
         ("sorgu", "Teknik analiz"),
         ("piyasa", "Piyasa ozeti"),
         ("portfoy", "Portfoyu goster"),
+        ("durum", "Portfoy durumunu goster"),
         ("alis", "Alis kaydet"),
         ("satis", "Satis kaydet"),
         ("alarm", "Fiyat alarmi kur"),
@@ -558,6 +612,7 @@ def main():
     app.add_handler(CommandHandler("deger", value_analysis))
     app.add_handler(CommandHandler("sorgu", technical_analysis))
     app.add_handler(CommandHandler("portfoy", portfolio))
+    app.add_handler(CommandHandler("durum", portfolio_status))
     app.add_handler(CommandHandler("alis", buy_stock))
     app.add_handler(CommandHandler("satis", sell_stock))
     app.add_handler(CommandHandler("alarm", set_alert))
