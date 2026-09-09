@@ -171,6 +171,22 @@ def _data_status_report():
 
     cache_time = st.session_state.get("cache_time", "Veritabani kaydi")
     st.info(f"Son cache guncelleme: {cache_time} | Veritabanindaki hisse: {total}")
+    db = DBManager()
+    tables = db.get_database_tables()
+    if tables:
+        selected_table = st.selectbox(
+            "Veritabani tablosu",
+            tables,
+            key="admin_database_table",
+            help="Secilen tablonun ilk 200 satiri admin kullanicilara gosterilir.",
+        )
+        table_rows = db.get_table_rows(selected_table, limit=200)
+        st.caption(f"{selected_table}: {len(table_rows)} satir gosteriliyor (en fazla 200)")
+        if table_rows:
+            st.dataframe(pd.DataFrame(table_rows), hide_index=True)
+        else:
+            st.info("Bu tabloda henuz kayit bulunmuyor.")
+
     latest_recorded = max(
         (row.get("recorded_at") or "" for row in report_rows),
         default="Bilinmiyor",

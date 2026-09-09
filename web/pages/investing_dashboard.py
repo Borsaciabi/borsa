@@ -34,6 +34,8 @@ def render_investing_dashboard():
             if loader.is_cache_valid(3600):
                 data = loader.load_cache()
             if not data:
+                data = loader.load_from_database()
+            if not data:
                 data = loader.load_all()
             st.session_state.stock_data = data
             st.session_state.cache_time = loader.get_cache_time()

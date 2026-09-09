@@ -570,6 +570,29 @@ class DataPreloader:
             print(f"Cache okuma hatasi: {e}")
         return {}
 
+    def load_from_database(self) -> dict:
+        """Restore persisted market data when the generated cache is missing."""
+        rows = self.db.get_all_stock_market_data()
+        restored = {}
+        for row in rows:
+            code = row.get("symbol")
+            if not code:
+                continue
+            restored[code] = {
+                key: row.get(key)
+                for key in (
+                    "last_price", "change_pct", "volume", "market_cap",
+                    "net_debt", "total_shares", "float_rate", "floating_shares",
+                    "pe", "pb", "calculated_value", "ratio", "signal",
+                    "company_name", "sector", "financial_period",
+                    "total_equity", "paid_in_capital", "net_income",
+                    "financial_periods", "recorded_at",
+                )
+            }
+            restored[code]["stock_code"] = code
+        self._all_data = restored
+        return restored
+
     def get_cache_time(self) -> str:
         """Son guncelleme zamanini dondurur."""
         try:

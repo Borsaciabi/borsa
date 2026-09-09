@@ -410,6 +410,32 @@ class DBManager:
         conn.close()
         return [dict(row) for row in rows]
 
+    def get_database_tables(self):
+        """Return application tables that are safe to inspect in the admin UI."""
+        conn = self._get_conn()
+        rows = conn.execute(
+            """
+            SELECT name FROM sqlite_master
+            WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """
+        ).fetchall()
+        conn.close()
+        return [row["name"] for row in rows]
+
+    def get_table_rows(self, table_name, limit=200):
+        """Read a bounded table sample for the admin data browser."""
+        allowed = set(self.get_database_tables())
+        if table_name not in allowed:
+            raise ValueError("Gecersiz veritabani tablosu")
+        safe_limit = max(1, min(int(limit), 500))
+        conn = self._get_conn()
+        rows = conn.execute(
+            f'SELECT * FROM "{table_name}" LIMIT ?', (safe_limit,)
+        ).fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
     def get_user_count(self):
         conn = self._get_conn()
         count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]

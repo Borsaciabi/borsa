@@ -13,6 +13,8 @@ def _get_data():
         if loader.is_cache_valid(3600):
             data = loader.load_cache()
         if not data:
+            data = loader.load_from_database()
+        if not data:
             data = loader.load_all()
         st.session_state.stock_data = data
     return data
