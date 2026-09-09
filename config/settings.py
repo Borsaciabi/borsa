@@ -16,11 +16,18 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
-DATABASE_DIR = BASE_DIR / "data"
+# Keep local data outside git worktrees so different checkouts share one
+# account, portfolio and market database.
+if os.getenv("PYTHONANYWHERE_DOMAIN"):
+    DATABASE_DIR = BASE_DIR / "data"
+else:
+    DATABASE_DIR = Path(os.getenv("BORSA_DATA_DIR", Path.home() / "BorsaAnalizData"))
 DATABASE_DIR.mkdir(exist_ok=True)
 DATABASE_PATH = DATABASE_DIR / "borsa.db"
 
-CACHE_DIR = BASE_DIR / "data" / "cache"
+# Cache follows the same shared data root to avoid repeated full downloads
+# when the app is launched from another checkout.
+CACHE_DIR = DATABASE_DIR / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "300"))
 
