@@ -15,6 +15,14 @@ def load_pay_tedbirleri(symbol=None):
     return PayTedbirleriFetcher().fetch(symbol=symbol)
 
 
+def refresh_news_sources():
+    """Refresh KAP and Halk Yatirim data once when an app session opens."""
+    load_kap_news.clear()
+    load_pay_tedbirleri.clear()
+    load_kap_news()
+    load_pay_tedbirleri()
+
+
 def render_pay_tedbirleri(symbol=None, limit=100):
     title = f"{symbol} Pay Tedbirleri" if symbol else "Aktif Pay Tedbirleri"
     st.subheader(title)

@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
 import requests
+from data.cache.preloader import DataPreloader
 from pages.investing_dashboard import render_investing_dashboard
 from pages.stock_detail import render_stock_detail
 from pages.value_analysis import render_value_analysis
@@ -12,7 +13,7 @@ from pages.comparison import render_comparison
 from pages.alerts import render_alerts
 from pages.reports import render_reports
 from pages.admin_panel import render_admin_panel
-from pages.news import render_news, render_pay_tedbirleri
+from pages.news import render_news, render_pay_tedbirleri, refresh_news_sources
 
 st.set_page_config(
     page_title="BIST Analiz Platformu",
@@ -137,6 +138,26 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "auth_token" not in st.session_state:
     st.session_state.auth_token = None
+
+
+def _refresh_data_on_open():
+    """Refresh prices, KAP news and trading measures once per browser session."""
+    if st.session_state.get("opening_refresh_done"):
+        return
+    st.session_state.opening_refresh_done = True
+    with st.spinner("Acilis verileri guncelleniyor..."):
+        loader = DataPreloader()
+        fresh_data = loader.update_prices_only()
+        if fresh_data:
+            st.session_state.stock_data = fresh_data
+            st.session_state.cache_time = loader.get_cache_time()
+        try:
+            refresh_news_sources()
+        except (requests.RequestException, ValueError) as exc:
+            st.warning(f"KAP/pay tedbirleri acilis guncellemesi yapilamadi: {exc}")
+
+
+_refresh_data_on_open()
 
 API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
 
