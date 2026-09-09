@@ -177,13 +177,23 @@ def _data_status_report():
     # stock_master may still contain the original seeded BIST list. The
     # current market universe is the KAP fiili dolasim set, identified by its
     # persisted floating-share data.
-    data = {
-        row["symbol"]: row
-        for row in db_rows
-        if row.get("symbol")
-        and (row.get("floating_shares") or 0) > 0
-        and (row.get("float_rate") or 0) > 0
-    }
+    data = {}
+    for row in db_rows:
+        if not row.get("symbol"):
+            continue
+        if (row.get("floating_shares") or 0) <= 0 or (row.get("float_rate") or 0) <= 0:
+            continue
+        current = data.get(row["symbol"])
+        row_score = sum(
+            row.get(field) is not None
+            for field in ("total_equity", "paid_in_capital", "net_income", "financial_period")
+        )
+        current_score = sum(
+            current.get(field) is not None
+            for field in ("total_equity", "paid_in_capital", "net_income", "financial_period")
+        ) if current else -1
+        if current is None or row_score > current_score:
+            data[row["symbol"]] = row
     report_rows = list(data.values())
     total = len(report_rows)
 
