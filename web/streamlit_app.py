@@ -1,6 +1,10 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(APP_DIR)
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, APP_DIR)
 
 import streamlit as st
 import requests
