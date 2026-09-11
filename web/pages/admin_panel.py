@@ -1,8 +1,40 @@
+import os
 import streamlit as st
 import requests
 import pandas as pd
+from data.cache.preloader import DataPreloader
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+
+
+def _render_data_updates():
+    st.subheader("Veri Guncelleme")
+    st.caption(
+        "Kaynaklari ayri ayri yenileyin. Tum veriler islemi digerlerinin tamamini calistirir."
+    )
+    col1, col2, col3, col4 = st.columns(4)
+    actions = (
+        (col1, "Fiili Dolasim", "float", "update_float_data"),
+        (col2, "Net Borc", "debt", "update_net_debt"),
+        (col3, "Piyasa Degeri", "market-cap", "update_market_caps"),
+    )
+    for column, label, key, method_name in actions:
+        with column:
+            if st.button(label, key=f"refresh_{key}", width="stretch"):
+                try:
+                    with st.spinner(f"{label} guncelleniyor..."):
+                        result = getattr(DataPreloader(), method_name)()
+                    st.success(f"{result['updated']}/{result['total']} hisse guncellendi.")
+                except Exception as exc:
+                    st.error(f"{label} guncellemesi basarisiz: {exc}")
+    with col4:
+        if st.button("Tum Veriler", key="refresh-all", type="primary", width="stretch"):
+            try:
+                with st.spinner("Tum veriler guncelleniyor..."):
+                    data = DataPreloader().load_all()
+                st.success(f"{len(data)} hisse tamamen guncellendi.")
+            except Exception as exc:
+                st.error(f"Tam veri guncellemesi basarisiz: {exc}")
 
 
 def _render_all_portfolios(headers):
@@ -30,6 +62,8 @@ def _render_all_portfolios(headers):
 
 def render_admin_panel():
     st.title("Admin Paneli - Kullanici Yonetimi")
+    _render_data_updates()
+    st.divider()
     token = st.session_state.get("auth_token")
     headers = {"Authorization": f"Bearer {token}"} if token else {}
 

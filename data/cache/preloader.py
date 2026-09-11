@@ -363,6 +363,114 @@ class DataPreloader:
             self.save_cache()
         return updated
 
+    def update_float_data(self):
+        """Refresh only KAP free-float shares and free-float ratios."""
+        if not self._all_data:
+            self.load_cache_with_backup()
+        kap_data = self.kap.fetch_all()
+        updated = 0
+        for item in kap_data:
+            code = item.get("stock_code")
+            if not code or code not in self._all_data:
+                continue
+            stock = self._all_data[code]
+            stock["float_rate"] = item.get("floating_ratio_pct", 0)
+            stock["floating_shares"] = item.get("floating_shares", 0)
+            stock["float_data_source"] = self.kap.URL
+            rate = stock.get("float_rate") or 0
+            shares = stock.get("floating_shares") or 0
+            if rate > 0 and shares > 0:
+                stock["total_shares"] = shares / (rate / 100)
+            updated += 1
+        self._recalculate_signals()
+        self._save_current_market_data()
+        return {"updated": updated, "total": len(kap_data)}
+
+    def update_market_caps(self):
+        """Refresh only market-cap data, leaving net debt and float data intact."""
+        if not self._all_data:
+            self.load_cache_with_backup()
+        asenax_data = self.asenax.tumunu_cek()
+        updated = 0
+        for code, values in asenax_data.items():
+            if code not in self._all_data:
+                continue
+            market_cap = values.get("piyasa_degeri", 0) or 0
+            if market_cap > 0:
+                self._all_data[code]["market_cap"] = market_cap
+                self._all_data[code]["market_cap_mn"] = market_cap / 1_000_000
+                self._all_data[code]["market_cap_source"] = "Asenax"
+                updated += 1
+        self._recalculate_signals()
+        self._save_current_market_data()
+        return {"updated": updated, "total": len(asenax_data)}
+
+    def update_net_debt(self):
+        """Refresh only net debt data from Is Yatirim."""
+        if not self._all_data:
+            self.load_cache_with_backup()
+        import re as re_mod
+        import requests
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        symbols = list(self._all_data.keys())
+        session = requests.Session()
+        session.headers.update({"User-Agent": "Mozilla/5.0"})
+
+        def fetch_one(code):
+            try:
+                url = (
+                    "https://www.isyatirim.com.tr/tr-tr/analiz/hisse/"
+                    f"Sayfalar/sirket-karti.aspx?hisse={code}"
+                )
+                html = session.get(url, timeout=15).text
+                chunk = html[html.find("Net Bor"):html.find("Net Bor") + 200]
+                match = re_mod.search(r"(-?[\d\.]+,\d)\s*mnTL", chunk)
+                return code, (float(match.group(1).replace(".", "").replace(",", ".")) * 1_000_000
+                              if match else None)
+            except requests.RequestException:
+                return code, None
+
+        updated = 0
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(fetch_one, code) for code in symbols]
+            for future in as_completed(futures):
+                code, net_debt = future.result()
+                if net_debt is not None and code in self._all_data:
+                    self._all_data[code]["net_debt"] = net_debt
+                    self._all_data[code]["net_debt_mn"] = net_debt / 1_000_000
+                    updated += 1
+        self._recalculate_signals()
+        self._save_current_market_data()
+        return {"updated": updated, "total": len(symbols)}
+
+    def _save_current_market_data(self):
+        """Persist the current cache and its derived market-data rows."""
+        for code, item in self._all_data.items():
+            self.db.upsert_stock_market_data(
+                code,
+                source="Mynet fiyat | KAP fiili dolasim | IsYatirim/isyatirimhisse finansal",
+                last_price=item.get("last_price"),
+                change_pct=item.get("change_pct"),
+                volume=item.get("volume"),
+                market_cap=item.get("market_cap"),
+                net_debt=item.get("net_debt"),
+                total_shares=item.get("total_shares"),
+                float_rate=item.get("float_rate"),
+                floating_shares=item.get("floating_shares"),
+                pe=item.get("pe"),
+                pb=item.get("pb"),
+                calculated_value=item.get("calculated_value"),
+                ratio=item.get("ratio"),
+                signal=item.get("signal"),
+                financial_period=item.get("financial_period"),
+                total_equity=item.get("total_equity"),
+                paid_in_capital=item.get("paid_in_capital"),
+                net_income=item.get("net_income"),
+                financial_periods=item.get("financial_periods"),
+            )
+        self.save_cache()
+
     def backup_data(self):
         """Mevcut veriyi backup dosyasina kopyalar."""
         try:
