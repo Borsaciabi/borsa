@@ -146,23 +146,27 @@ if "auth_token" not in st.session_state:
 
 
 def _refresh_data_on_open():
-    """Refresh prices, KAP news and trading measures once per browser session."""
-    if st.session_state.get("opening_refresh_done"):
+    """Refresh prices for everyone and source feeds for admins once per session."""
+    is_admin = (_current_user() or {}).get("role") == "admin"
+    refresh_role = "admin" if is_admin else "user"
+    if st.session_state.get("opening_refresh_role") == refresh_role:
         return
-    st.session_state.opening_refresh_done = True
-    with st.spinner("Acilis verileri guncelleniyor..."):
+    st.session_state.opening_refresh_role = refresh_role
+    with st.spinner(
+        "Acilis verileri guncelleniyor..."
+        if is_admin
+        else "Fiyatlar guncelleniyor..."
+    ):
         loader = DataPreloader()
         fresh_data = loader.update_prices_only()
         if fresh_data:
             st.session_state.stock_data = fresh_data
             st.session_state.cache_time = loader.get_cache_time()
-        try:
-            refresh_news_sources()
-        except (requests.RequestException, ValueError) as exc:
-            st.warning(f"KAP/pay tedbirleri acilis guncellemesi yapilamadi: {exc}")
-
-
-_refresh_data_on_open()
+        if is_admin:
+            try:
+                refresh_news_sources()
+            except (requests.RequestException, ValueError) as exc:
+                st.warning(f"KAP/pay tedbirleri acilis guncellemesi yapilamadi: {exc}")
 
 API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
 
@@ -350,6 +354,7 @@ def _render_user_panel():
 hidden_admin = _hidden_admin_entry()
 _restore_saved_login()
 _login_panel(hidden_admin=hidden_admin)
+_refresh_data_on_open()
 
 if st.sidebar.button("BIST Analiz", key="home_button", use_container_width=True):
     st.session_state.page = "Piyasa Dashboard"
